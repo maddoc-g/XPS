@@ -21,24 +21,26 @@ from openpyxl.utils import get_column_letter
 # =============================================================================
 # CONFIG
 # =============================================================================
-DATA_PATH = r'./data'
+DATA_PATH = r'./data/2026-06-26/averaged_data'
 
 LEGENDS = ['Underfocused', 'Focused']
 
 SURVEY_FILES = [
-    'aspirin_test_underfocused_Survey_2026-06-26__19h46m59s.txt',
-    'aspirin_test_focused_Survey_2026-06-26__19h28m31s.txt',
+    'aspirin_test_underfocused_Survey_2026-06-26__19h46m59s_alternative.txt',
+    'aspirin_test_focused_Survey_2026-06-26__19h28m31s_alternative.txt',
 ]
 C1S_FILES = [
-    'aspirin_test_underfocused_C_1s_2026-06-26__20h15m53s.txt',
-    'aspirin_test_focused_C_1s_2026-06-26__18h52m51s.txt',
+    'aspirin_test_underfocused_C_1s_2026-06-26__20h15m53s_average.txt',
+    'aspirin_test_focused_C_1s_2026-06-26__18h52m51s_average.txt',
 ]
 O1S_FILES = [
-    'aspirin_test_underfocused_O_1s_2026-06-26__19h56m37s.txt',
-    'aspirin_test_focused_O_1s_2026-06-26__19h04m33s.txt',
+    'aspirin_test_underfocused_O_1s_2026-06-26__19h56m37s_average.txt',
+    'aspirin_test_focused_O_1s_2026-06-26__19h04m33s_average.txt',
 ]
 
 OUTPUT_FILE = os.path.join(DATA_PATH, 'xps_data.xlsx')
+
+PHOTON_ENERGY = 1486.6  # Al Ka, eV
 
 # =============================================================================
 # STYLING HELPERS
@@ -100,7 +102,7 @@ def write_sheet(wb, sheet_name, df, legend, spectrum_type):
         style_data_row(ws, row=row_idx, n_cols=len(df.columns))
 
     # --- column widths ------------------------------------------------------
-    col_widths = {'BE_eV': 12, 'counts': 14}
+    col_widths = {'BE_eV': 12, 'KE_eV': 12, 'counts': 14}
     default_width = 18
     for col_idx, col_name in enumerate(df.columns, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = col_widths.get(col_name, default_width)
@@ -132,6 +134,13 @@ def main():
                 continue
 
             df = pd.read_csv(fpath, sep=r'\s+', engine='python')
+
+            # compute binding energy from kinetic energy and insert as the
+            # first column, so it's exported alongside the raw data
+            if 'KE_eV' in df.columns:
+                df.insert(0, 'BE_eV', PHOTON_ENERGY - df['KE_eV'])
+            else:
+                print(f'  [warn] no KE_eV column found in {fpath}; BE_eV not added')
 
             # sheet names must be ≤31 chars, no special characters
             sheet_name = f"{legend[:10]}_{spectrum_type.replace(' ', '')}"
